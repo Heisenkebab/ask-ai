@@ -1,8 +1,8 @@
 {
   "chain": [
+    { "provider": "claude-account", "model": "haiku" },
     { "provider": "gemini", "model": "gemini-flash-latest" },
-    { "provider": "anthropic", "model": "claude-haiku-4-5" },
-    { "provider": "openrouter", "model": "google/gemini-3.5-flash" },
+    { "provider": "gemini-account", "model": "gemini-3.8-flash-low" },
     { "provider": "gemini", "model": "gemini-flash-lite-latest" }
   ],
   "language": "auto"

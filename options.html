@@ -54,6 +54,12 @@
 <body>
   <h1>Ask AI – Settings</h1>
 
+  <h2>Accounts</h2>
+  <div class="hint">Use the models included in your Claude, Google or ChatGPT plan – no API key. Runs the official CLI you're logged into, with all its tools disabled.</div>
+  <div class="box-warning" id="bridgeHint" hidden>The account bridge isn't installed. In Terminal, run <code>./native-host/install.sh</code> in the extension folder, then reload the extension.</div>
+  <div class="hint" id="bridgeDetail"></div>
+  <div id="accounts"><span class="hint">Checking…</span></div>
+
   <h2>API keys</h2>
   <div class="hint">One key per provider; only needed for the providers you put in the chain. A master password is optional: with one, keys are stored encrypted.</div>
   <div class="box-warning" id="fileWarning" hidden>⚠ <code>config.json</code> contains unencrypted API keys. Click <b>Download config.json</b> below (exports them encrypted) and replace the old file.</div>

@@ -8,6 +8,7 @@
     "scripting",
     "storage",
     "contextMenus",
+    "nativeMessaging",
     "alarms"
   ],
   "host_permissions": [
@@ -52,5 +53,6 @@
     "16": "icons/16.png",
     "48": "icons/48.png",
     "128": "icons/128.png"
-  }
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsSN9WL9855tY7A/XP19szi4nVrqb5UDlEM/+urXPtK+TuS5BJLGemq4zE07zpH9jK+bVgvGBGJOLDi9rLJJQIZzPz8IFDtjwp87MdewsvzmzJzhp0RtzODyJdYEPs2RL/DbJsWYmHIV8mNE3hhJ/nzeYkVBxEPBGlxQTZgDruQ+69jiSKcVRlXXWKZFeV1nKegPZ2egrywEe6UgOHfONHgbEGZsyCoAAwNfQQATVFltjAnWBP6vSEljxb37NbzTpqv/+GqPn0jvM9fzOmzt8bBbrMbTd1PWbgIsiaLYcRcgtDy+2Wekn9p3wBiRDcTC+h9j19Xngx349txYlTEFosQIDAQAB"
 }

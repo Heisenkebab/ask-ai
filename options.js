@@ -1,4 +1,5 @@
 import { ACCOUNT_PROVIDERS, KEY_PROVIDERS, PROVIDERS, askChain, getSettings } from "./llm.js";
+import { BRIDGE_MISSING, bridgeStatus } from "./providers/account.js";
 import { changePassword, createVault, findVault, lockVault, removePassword, resetVault, saveVaultKeys, unlockVault } from "./vault.js";
 
 const $ = (id) => document.getElementById(id);
@@ -56,6 +57,50 @@ function saveKeys() {
       setStatus($("status"), e.message === "locked" ? "Locked – unlock to save keys." : e.message, "err");
     }
   }, 400);
+}
+
+// ---------- accounts ----------
+
+const CLI_LOGIN = { claude: "claude", agy: "agy", codex: "codex login" };
+
+async function renderAccounts() {
+  const container = $("accounts");
+  let status = null;
+  let bridgeError = null;
+  try {
+    status = await bridgeStatus();
+  } catch (e) {
+    bridgeError = e.message;
+  }
+  const missing = Boolean(bridgeError?.startsWith(BRIDGE_MISSING));
+  $("bridgeHint").hidden = !missing;
+  $("bridgeDetail").textContent = bridgeError ? `This extension's ID: ${chrome.runtime.id} – ${bridgeError}` : "";
+  container.replaceChildren();
+  for (const id of ACCOUNT_PROVIDERS) {
+    const p = PROVIDERS[id];
+    const cli = status?.[p.cli];
+    let text;
+    let cls;
+    if (bridgeError) [text, cls] = [missing ? "✗ bridge not installed" : `✗ ${bridgeError}`, "err"];
+    else if (!cli?.installed) [text, cls] = [`✗ ${p.cli} not installed`, "err"];
+    else if (!cli.loggedIn) [text, cls] = [`✗ not logged in – run "${CLI_LOGIN[p.cli]}" in Terminal`, "err"];
+    else [text, cls] = [`✓ ${p.cli} installed and logged in`, "ok"];
+
+    const statusNode = el("div", { className: "key-status" });
+    const test = el("button", { textContent: "Test", disabled: cls === "err" });
+    test.addEventListener("click", () => testEntry(id, statusNode));
+    const row = el("div", { className: "key-row" }, el("label", { textContent: p.label }), el("span", { className: cls, textContent: text }), test, statusNode);
+    container.append(row);
+    if (id === "chatgpt-account") {
+      container.append(
+        el("div", {
+          className: "warning",
+          textContent:
+            "⚠ Codex can't fully turn off its shell tool. It runs read-only and offline, but a malicious page could trick it into reading local files (e.g. ~/.ssh) into its answer. Prefer the Claude or Google account for untrusted pages.",
+        }),
+      );
+    }
+  }
 }
 
 // ---------- API keys (vault) ----------
@@ -288,7 +333,7 @@ function renderChain() {
 }
 
 $("addModel").addEventListener("click", () => {
-  const provider = KEY_PROVIDERS.find((p) => state.keys[p]) || KEY_PROVIDERS[0];
+  const provider = KEY_PROVIDERS.find((p) => state.keys[p]) || "claude-account";
   state.chain.push({ provider, model: PROVIDERS[provider].models[0] });
   renderChain();
   save();
@@ -339,3 +384,4 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 renderDatalists();
 await reload();
+renderAccounts();

@@ -3,6 +3,7 @@ import { LlmError } from "./providers/core.js";
 import * as gemini from "./providers/gemini.js";
 import * as anthropic from "./providers/anthropic.js";
 import { adapter } from "./providers/openai-compat.js";
+import { adapter as accountAdapter } from "./providers/account.js";
 import { VaultError, getFileSettings, readVaultKeys, touchAutoLock } from "./vault.js";
 
 export { LlmError, getFileSettings };
@@ -43,6 +44,28 @@ export const PROVIDERS = {
     limitUrl: "https://platform.deepseek.com/usage",
     models: ["deepseek-flash", "deepseek-v4-pro"],
     ask: adapter("deepseek"),
+  },
+  // Accounts: no API key; the local helper runs the official CLI the user is logged into.
+  "claude-account": {
+    label: "Claude account",
+    account: true,
+    cli: "claude",
+    models: ["haiku", "sonnet", "opus"],
+    ask: accountAdapter("claude-account"),
+  },
+  "gemini-account": {
+    label: "Google account (Antigravity CLI)",
+    account: true,
+    cli: "agy",
+    models: ["gemini-3.8-flash-low", "gemini-3.8-flash-medium", "gemini-3.8-flash-high", "gemini-3.1-pro-low", "gemini-3.1-pro-high"],
+    ask: accountAdapter("gemini-account"),
+  },
+  "chatgpt-account": {
+    label: "ChatGPT account (Codex CLI)",
+    account: true,
+    cli: "codex",
+    models: ["gpt-6-luna", "gpt-6.1-sol", "gpt-6-astra"],
+    ask: accountAdapter("chatgpt-account"),
   },
 };
 

@@ -2,7 +2,7 @@
 
 A Brave/Chrome extension: highlight a question on a web page (or draw a box around it), press a hotkey, and an AI's answer appears in a small transparent popup next to it.
 
-Supported providers: **Google Gemini, OpenAI, Anthropic (Claude), OpenRouter, DeepSeek**.
+Use **your Claude, Google or ChatGPT account** (no API key), or API keys for **Google Gemini, OpenAI, Anthropic (Claude), OpenRouter, DeepSeek**.
 
 - **Multiple choice** → shows only the correct option(s), e.g. `B  Mars`
 - **Free text** → shows a short, direct answer
@@ -15,10 +15,58 @@ Plain JavaScript, no build step, no dependencies.
 ## Setup
 
 1. Open `brave://extensions`, turn on **Developer mode**, click **Load unpacked** and select this folder.
-2. The settings page opens. Set a master password (or choose *Use without a password*), paste your key(s) and click **Test**. Gemini has a free tier: <https://aistudio.google.com/apikey>.
+2. The settings page opens. Either:
+   - **Accounts:** set up the account bridge (next section), or
+   - **API keys:** set a master password (or choose *Use without a password*), paste your key(s) and click **Test**. Gemini has a free tier: <https://aistudio.google.com/apikey>.
 3. Arrange the **Model chain** and click **Test chain**.
 
 To keep your settings even after removing the extension, click **Download config.json** on the settings page and put the file in this folder (next to `manifest.json`). It contains your keys only in **encrypted** form (without a master password, keys are left out). `config.json` is git-ignored.
+
+> **Updating from an earlier version:** the extension now has a fixed ID (needed for the account bridge), so Brave treats it as new once and its stored settings start empty. Restore them with your `config.json`, or re-enter them.
+
+## Use your Claude / Google / ChatGPT account
+
+The models included in your plan can answer instead of a paid API key. The extension can't log into claude.ai, gemini.google.com or chatgpt.com itself (no public API; scripting those sites breaks their terms), so it uses each company's **official command-line tool**, which you log into once. A small local helper (`native-host/`) runs it for each question, via Brave's Native Messaging (stdin/stdout, no network port).
+
+| Account | Tool | Install | Log in once |
+|---|---|---|---|
+| Claude (Pro / Max) | Claude Code `claude` | <https://claude.com/claude-code> | `claude` → `/login` |
+| Google | Antigravity CLI `agy` | see <https://antigravity.google/docs/cli/reference> | `agy` → follow the login prompts |
+| ChatGPT (Plus / Pro) | Codex CLI `codex` | `pkgs.codex` (nix) or `npm i -g @openai/codex` | `codex login` → "Sign in with ChatGPT" |
+
+With nix + Home Manager: add the Antigravity CLI and `pkgs.codex` to `home.packages` and switch. With npm on nix, first `npm config set prefix ~/.npm-global` (the nix store is read-only).
+
+Then register the helper with Brave (current user only, no sudo):
+
+```sh
+./native-host/install.sh            # copies the helper to ~/Library/Application Support/AskAI/
+                                    # and registers it in ~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/
+./native-host/install.sh --system   # if Brave still says "bridge not installed": also registers it system-wide (sudo)
+./native-host/uninstall.sh          # removes everything again
+```
+
+The helper is copied out of the project folder because macOS doesn't let Brave run programs stored in `~/Documents`, `~/Desktop` or `~/Downloads`. **Re-run `install.sh` after updating the extension** so the installed copy stays current. `install.sh` prints which tools are installed and logged in. Reload the extension; the **Accounts** section of the settings page shows the same status. Add e.g. *Claude account / haiku* to the chain.
+
+<details><summary>Home Manager instead of install.sh</summary>
+
+```nix
+home.file."Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/com.askai.bridge.json".text = builtins.toJSON {
+  name = "com.askai.bridge";
+  description = "Ask AI account bridge";
+  path = "/Users/YOU/Library/Application Support/AskAI/ask-ai-host";   # created by install.sh (must be outside ~/Documents)
+  type = "stdio";
+  allowed_origins = [ "chrome-extension://aggkefdicohoiedeogpgpaeincnjngia/" ];
+};
+```
+</details>
+
+Notes:
+
+- **Speed:** 3–10 s per answer (each question starts the tool). API keys are faster.
+- **Limits:** questions count against your plan's normal usage limits.
+- **Terms:** each provider decides what its subscription may be used for; this uses only their official tools, for your own use. Check their terms.
+- **Google account:** text questions only for now; screenshots skip to the next chain entry.
+- **History:** Claude runs without saving a session. Antigravity CLI / Codex may keep local history in `~/.gemini/antigravity-cli` / `~/.codex`.
 
 ## Usage
 
@@ -61,6 +109,8 @@ An ordered list of `provider + model` entries. Each question goes to the first e
 - has no key, a wrong key, no credit, or an unknown model name
 - refuses, or can't read images (screenshot mode)
 
+Account entries (Claude / Google / ChatGPT account) need no key and keep working while the API keys are locked.
+
 If every entry fails, the popup lists each one with its reason. Default chain: `gemini/gemini-flash-latest` → `gemini/gemini-flash-lite-latest`.
 
 ### Other
@@ -82,6 +132,14 @@ Where both are set, the settings page wins over `config.json` (keys merge per pr
 - *Doesn't protect:* keys while unlocked against malware already running on your Mac (it could read Brave's memory or log your password), or a weak password brute-forced from a stolen vault. No setup can make a key that the extension must use impossible to steal – that's what spending limits are for.
 - Keys never reach web pages: only the extension's service worker and pages read them and call the APIs; the in-page popup only gets the answer.
 
+**Account bridge – prompt injection.** The question comes from any web page and may contain hidden instructions ("ignore this, run a command…"). The CLIs are coding agents, so the helper runs them **with every tool disabled**:
+
+- Claude Code: `--tools ""`, `--strict-mcp-config` (no MCP servers), `--safe-mode` (no hooks / plugins / CLAUDE.md), `--permission-mode dontAsk`, `--no-session-persistence`.
+- Antigravity CLI (`agy`): a hook that denies every tool call, plus its terminal sandbox. It has no switch to remove its tools or replace its system prompt, so this is weaker than the Claude lock-down.
+- Codex CLI: `--sandbox read-only` (no writes, no network), `--ephemeral`. ⚠ **Codex can't fully turn off its shell tool**: a malicious page could trick it into *reading* local files (e.g. `~/.ssh`) into its answer. Prefer the Claude or Google account for untrusted pages.
+
+All runs use an empty temp folder. The helper only spawns these three fixed programs (no shell), validates the model name, input size and image type, and only the extension with ID `aggkefdicohoiedeogpgpaeincnjngia` may start it. The answer popup uses a *closed* Shadow DOM, so page scripts can't read it. Hidden text can still make an **answer** wrong; it just can't make the tools **do** anything.
+
 ## Files
 
 | File | Purpose |
@@ -91,6 +149,9 @@ Where both are set, the settings page wins over `config.json` (keys merge per pr
 | `llm.js` | Provider list, settings (+ migration, `config.json`), the fallback chain |
 | `vault.js` | Encrypted API key storage (master password, lock / unlock, auto-lock) |
 | `unlock.html` / `unlock.js` | Toolbar popup for unlocking while keys are locked |
+| `providers/account.js` | Account providers: talks to the local helper |
+| `native-host/ask-ai-host.mjs` | Local helper that runs `claude` / `agy` / `codex` with tools disabled |
+| `native-host/install.sh` / `uninstall.sh` | Register / unregister the helper with Brave |
 | `providers/core.js` | Shared prompt, answer schema, HTTP/error handling, answer parsing |
 | `providers/gemini.js` | Google Gemini adapter |
 | `providers/openai-compat.js` | OpenAI, OpenRouter and DeepSeek adapter (Chat Completions format) |
@@ -133,4 +194,7 @@ After editing code: click reload on the extension card in `brave://extensions`, 
 - **"Service worker registration failed. Status code: 3"**: remove the extension (not just reload) and load it again. If it persists, give Brave access to the Documents folder (System Settings → Privacy & Security → Files and Folders), or load the extension from a folder outside `~/Documents`. Details are in `brave://serviceworker-internals`.
 - **Hotkey does nothing**: check `brave://extensions/shortcuts`; another app or macOS may own the key.
 - **Logs**: `brave://extensions` → Ask AI → *Inspect views: service worker*. Each failed chain entry is logged there.
+- **"Account bridge not installed"**: run `./native-host/install.sh`, quit Brave (⌘Q) and reopen it. If it persists, run `./native-host/install.sh --system`. The settings page shows the extension ID and Brave's exact error under *Accounts*.
+- **"Native host has exited"**: the helper can't start – re-run `./native-host/install.sh` (it must live outside `~/Documents`).
+- **Account "not logged in"**: run the tool once in Terminal (`claude`, `agy`, `codex login`).
 - **🔒 on the toolbar icon**: API keys are locked – click the icon and enter your master password.
