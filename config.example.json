@@ -1,6 +1,16 @@
 {
-  "apiKey": "",
-  "model": "gemini-flash-latest",
-  "fallbackModels": "gemini-flash-lite-latest, gemini-flash-latest",
+  "keys": {
+    "gemini": "",
+    "openai": "",
+    "anthropic": "",
+    "openrouter": "",
+    "deepseek": ""
+  },
+  "chain": [
+    { "provider": "gemini", "model": "gemini-flash-latest" },
+    { "provider": "anthropic", "model": "claude-haiku-4-5" },
+    { "provider": "openrouter", "model": "google/gemini-3.5-flash" },
+    { "provider": "gemini", "model": "gemini-flash-lite-latest" }
+  ],
   "language": "auto"
 }

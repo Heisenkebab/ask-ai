@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Ask Gemini",
+  "name": "Ask AI",
   "version": "1.0.0",
-  "description": "Highlight a question, press a hotkey, and get Gemini's answer in a small popup.",
+  "description": "Highlight a question or screenshot part of the page, press a hotkey, and get an AI answer (Gemini, OpenAI, Claude, OpenRouter, DeepSeek) in a small popup.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -10,7 +10,11 @@
     "contextMenus"
   ],
   "host_permissions": [
-    "https://generativelanguage.googleapis.com/*"
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://openrouter.ai/*",
+    "https://api.deepseek.com/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -22,7 +26,7 @@
         "default": "Ctrl+Shift+Y",
         "mac": "Command+Shift+Y"
       },
-      "description": "Ask Gemini about the selected text"
+      "description": "Ask AI about the selected text"
     },
     "toggle-popup": {
       "suggested_key": {
@@ -36,12 +40,12 @@
         "default": "Ctrl+Shift+E",
         "mac": "Command+Shift+E"
       },
-      "description": "Select an area of the page and ask Gemini about it"
+      "description": "Select an area of the page and ask AI about it"
     }
   },
   "options_page": "options.html",
   "action": {
-    "default_title": "Ask Gemini (select text, then press the hotkey)"
+    "default_title": "Ask AI (select text, then press the hotkey)"
   },
   "icons": {
     "16": "icons/16.png",

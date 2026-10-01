@@ -1,18 +1,18 @@
-import { askGemini, getSettings, GeminiError } from "./gemini.js";
+import { askChain, getSettings, LlmError } from "./llm.js";
 
-const MENU_ID = "ask-gemini-selection";
+const MENU_ID = "ask-ai-selection";
 const MAX_CHARS = 20000;
 const DEFAULT_TITLE = chrome.runtime.getManifest().action.default_title;
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   chrome.contextMenus.create({
     id: MENU_ID,
-    title: "Ask Gemini about selection",
+    title: "Ask AI about selection",
     contexts: ["selection"],
   });
   if (details.reason === "install") {
-    const { apiKey } = await getSettings();
-    if (!apiKey) chrome.runtime.openOptionsPage();
+    const { keys } = await getSettings();
+    if (!Object.values(keys).some(Boolean)) chrome.runtime.openOptionsPage();
   }
 });
 
@@ -83,26 +83,26 @@ function popupSender(tabId, rect) {
     chrome.tabs.sendMessage(tabId, { requestId, rect, ...payload }, { frameId: 0 }).catch(() => {});
 }
 
-// Shows the loading popup, asks Gemini and shows the answer (or error) at rect.
+// Shows the loading popup, runs the model chain and shows the answer (or error) at rect.
 async function runQuery(tabId, rect, input) {
   const send = popupSender(tabId, rect);
   send({ state: "loading" });
   try {
     const settings = await getSettings();
-    const data = await askGemini(input, settings, (next) =>
-      send({ state: "loading", message: `Model busy, trying ${next}…` }),
+    const data = await askChain(input, settings, (next) =>
+      send({ state: "loading", message: `Trying ${next}…` }),
     );
     send({ state: "answer", data });
   } catch (e) {
     send({
       state: "error",
       message: e.message,
-      needsSettings: e instanceof GeminiError && e.needsSettings,
+      needsSettings: e instanceof LlmError && e.needsSettings,
     });
   }
 }
 
-// Hotkey → user drags a box on the page → that part of the visible tab goes to Gemini as an image.
+// Hotkey → user drags a box on the page → that part of the visible tab goes to the model as an image.
 async function handleScreenshot(tab) {
   if (!tab?.id) return;
   const tabId = tab.id;

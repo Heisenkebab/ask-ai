@@ -213,7 +213,7 @@
 
   // Loading shows only a small, slow spinner; status text goes to the tooltip.
   function renderLoading(ui, message) {
-    ui.card.title = message || "Asking Gemini…";
+    ui.card.title = message || "Asking AI…";
     ui.body.replaceChildren(el("span", "spinner"));
   }
 
