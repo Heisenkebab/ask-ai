@@ -1,0 +1,6 @@
+{
+  "apiKey": "",
+  "model": "gemini-flash-latest",
+  "fallbackModels": "gemini-flash-lite-latest, gemini-flash-latest",
+  "language": "auto"
+}

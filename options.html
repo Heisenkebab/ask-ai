@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Ask Gemini – Settings</title>
+  <style>
+    :root { color-scheme: light dark; --muted: #5f6368; --accent: #1a73e8; --ok: #188038; --err: #d93025; }
+    @media (prefers-color-scheme: dark) { :root { --muted: #9aa0a6; --accent: #8ab4f8; --ok: #81c995; --err: #f28b82; } }
+    body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px; }
+    h1 { font-size: 20px; }
+    label { display: block; font-weight: 600; margin-top: 18px; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    input, select { width: 100%; box-sizing: border-box; padding: 8px; margin-top: 6px; font: inherit; border-radius: 6px; border: 1px solid #9aa0a6; }
+    .row { display: flex; gap: 8px; margin-top: 22px; align-items: center; }
+    button { padding: 8px 16px; font: inherit; border-radius: 6px; border: 1px solid #9aa0a6; cursor: pointer; background: transparent; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #status { margin-left: 8px; }
+    .ok { color: var(--ok); } .err { color: var(--err); }
+    a { color: var(--accent); }
+    code { font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Ask Gemini – Settings</h1>
+
+  <label for="apiKey">Gemini API key</label>
+  <input id="apiKey" type="password" autocomplete="off" placeholder="AIza…">
+  <div class="hint">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. It is stored only in this browser.</div>
+
+  <label for="model">Model</label>
+  <input id="model" type="text" list="models" spellcheck="false">
+  <datalist id="models">
+    <option value="gemini-flash-latest">
+    <option value="gemini-flash-lite-latest">
+    <option value="gemini-pro-latest">
+  </datalist>
+  <div class="hint"><code>gemini-flash-latest</code> always points to the current Flash model. Pro models usually aren't on the free tier.</div>
+
+  <label for="fallbackModels">Fallback models</label>
+  <input id="fallbackModels" type="text" spellcheck="false">
+  <div class="hint">Comma-separated. If the model above is overloaded, rate-limited or not found, these are tried in order.</div>
+
+  <label for="language">Answer language</label>
+  <select id="language">
+    <option value="auto">Same as the question</option>
+    <option value="English">English</option>
+    <option value="German">German</option>
+    <option value="French">French</option>
+    <option value="Spanish">Spanish</option>
+  </select>
+
+  <div class="row">
+    <button id="test" class="primary">Test key</button>
+    <button id="download">Download config.json</button>
+    <span id="status"></span>
+  </div>
+  <p class="hint">Changes save automatically. Brave deletes them when you remove the extension, so for a permanent
+    setup click <b>Download config.json</b> and put the file into the extension folder (next to <code>manifest.json</code>),
+    then reload the extension.</p>
+  <p class="hint ok" id="fileNote" hidden>✓ API key found in config.json.</p>
+
+  <p class="hint" style="margin-top:28px">
+    Ask: <b>⌘⇧Y</b> (Mac) / <b>Ctrl+Shift+Y</b>. Hide / show the answer: <b>⌘⇧U</b> / <b>Ctrl+Shift+U</b>.
+    Screenshot a region: <b>⌘⇧E</b> / <b>Ctrl+Shift+E</b>.
+    To change them, open
+    <code>brave://extensions/shortcuts</code> (paste it into the address bar).
+    You can also right-click a selection → “Ask Gemini about selection”.
+  </p>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

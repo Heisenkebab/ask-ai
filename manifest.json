@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Ask Gemini",
+  "version": "1.0.0",
+  "description": "Highlight a question, press a hotkey, and get Gemini's answer in a small popup.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "commands": {
+    "ask-gemini": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Ask Gemini about the selected text"
+    },
+    "toggle-popup": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
+      },
+      "description": "Hide / show the answer popup"
+    },
+    "ask-screenshot": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      },
+      "description": "Select an area of the page and ask Gemini about it"
+    }
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Ask Gemini (select text, then press the hotkey)"
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
+}

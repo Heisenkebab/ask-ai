@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Ask Gemini – test questions</title>
+  <style>
+    body { font: 16px/1.6 system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 16px; }
+    .q { border: 1px solid #ccc; border-radius: 8px; padding: 12px 16px; margin: 20px 0; }
+    /* Hostile page styles: the popup should be unaffected (Shadow DOM). */
+    div, span, button { font-family: "Comic Sans MS", cursive !important; }
+  </style>
+</head>
+<body>
+  <h1>Test questions</h1>
+  <p>Select a whole question (including its options), then press ⌘⇧Y / Ctrl+Shift+Y.</p>
+
+  <div class="q">
+    <p>1. Which planet is known as the Red Planet?</p>
+    <p>A) Venus<br>B) Mars<br>C) Jupiter<br>D) Mercury</p>
+  </div>
+
+  <div class="q">
+    <p>2. Which of the following are prime numbers? (Select all that apply)</p>
+    <p>a) 2<br>b) 9<br>c) 13<br>d) 21</p>
+  </div>
+
+  <div class="q">
+    <p>3. Wer schrieb „Faust“?</p>
+    <ul><li>Schiller</li><li>Goethe</li><li>Lessing</li></ul>
+  </div>
+
+  <div class="q">
+    <p>4. Explain in one sentence why the sky appears blue.</p>
+  </div>
+
+  <div class="q">
+    <p>5. What is the time complexity of binary search on a sorted array?</p>
+  </div>
+
+  <div style="height: 80vh"></div>
+  <div class="q">
+    <p>6. (Near the bottom, so the popup should open above.) What is the capital of Australia?</p>
+    <p>A) Sydney &nbsp; B) Melbourne &nbsp; C) Canberra &nbsp; D) Perth</p>
+  </div>
+
+  <h2>Inside an iframe</h2>
+  <iframe style="width:100%;height:120px;border:1px solid #ccc" srcdoc="<p style='font-family:sans-serif'>7. How many sides does a hexagon have? A) 5 B) 6 C) 8</p>"></iframe>
+</body>
+</html>
