@@ -1,4 +1,5 @@
-import { askChain, getSettings, LlmError } from "./llm.js";
+import { PROVIDERS, askChain, getSettings, LlmError } from "./llm.js";
+import { handleAlarm } from "./vault.js";
 
 const MENU_ID = "ask-ai-selection";
 const MAX_CHARS = 20000;
@@ -27,6 +28,25 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 chrome.action.onClicked.addListener((tab) => handleAsk(tab));
+
+// Auto-lock timer for the key vault.
+chrome.alarms.onAlarm.addListener(handleAlarm);
+
+// While the vault is locked (and the chain needs API keys), the toolbar icon opens the unlock
+// window instead of asking. Passwords are only ever typed into extension pages, never web pages.
+async function refreshToolbar() {
+  const settings = await getSettings();
+  const needsKeys = settings.chain.some((e) => PROVIDERS[e.provider] && !PROVIDERS[e.provider].account);
+  const locked = settings.locked && needsKeys;
+  await chrome.action.setPopup({ popup: locked ? "unlock.html" : "" });
+  await chrome.action.setBadgeText({ text: locked ? "🔒" : "" });
+  await chrome.action.setBadgeBackgroundColor({ color: "#5f6368" });
+}
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "session" || "vault" in changes || "chain" in changes) refreshToolbar();
+});
+chrome.runtime.onStartup.addListener(refreshToolbar);
+refreshToolbar();
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.action === "openOptions") chrome.runtime.openOptionsPage();

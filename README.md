@@ -8,16 +8,17 @@ Supported providers: **Google Gemini, OpenAI, Anthropic (Claude), OpenRouter, De
 - **Free text** → shows a short, direct answer
 - Works with highlighted text **or** a screenshot of part of the page
 - One fallback chain across providers: if a model is busy, rate-limited or fails, the next one is asked
+- API keys can be stored encrypted with a master password (optional)
 
 Plain JavaScript, no build step, no dependencies.
 
 ## Setup
 
-1. Get an API key from at least one provider. Gemini has a free tier: <https://aistudio.google.com/apikey>.
-2. Open `brave://extensions`, turn on **Developer mode**, click **Load unpacked** and select this folder.
-3. The settings page opens. Paste your key(s), click **Test** next to each, then arrange the **Model chain** and click **Test chain**.
+1. Open `brave://extensions`, turn on **Developer mode**, click **Load unpacked** and select this folder.
+2. The settings page opens. Set a master password (or choose *Use without a password*), paste your key(s) and click **Test**. Gemini has a free tier: <https://aistudio.google.com/apikey>.
+3. Arrange the **Model chain** and click **Test chain**.
 
-To keep your settings even after removing the extension, click **Download config.json** on the settings page and put the file in this folder (next to `manifest.json`). You can also copy `config.example.json` to `config.json` and fill it in by hand. `config.json` is git-ignored.
+To keep your settings even after removing the extension, click **Download config.json** on the settings page and put the file in this folder (next to `manifest.json`). It contains your keys only in **encrypted** form (without a master password, keys are left out). `config.json` is git-ignored.
 
 ## Usage
 
@@ -39,7 +40,7 @@ Change hotkeys at `brave://extensions/shortcuts`.
 
 ### API keys
 
-One key per provider. You only need keys for providers you put in the chain.
+One key per provider. You only need keys for providers you put in the chain. Set a **spending limit** on each key (link next to each key on the settings page), and preferably create a separate key just for this extension.
 
 | Provider | Get a key | Example models |
 |---|---|---|
@@ -67,8 +68,19 @@ If every entry fails, the popup lists each one with its reason. Default chain: `
 | Setting | Default |
 |---|---|
 | Answer language | Same as the question |
+| Auto-lock | Only when Brave quits (or after 5–60 min unused) |
 
 Where both are set, the settings page wins over `config.json` (keys merge per provider). Settings from the older Gemini-only version (`apiKey`, `model`, `fallbackModels`) are converted automatically.
+
+## Security
+
+**API keys – master password.** Keys are encrypted with AES-256-GCM; the key is derived from your master password with PBKDF2-SHA256 (600,000 rounds). Only the encrypted form is stored (`chrome.storage` and `config.json`). After you unlock, the derived key is kept in memory only (`chrome.storage.session`) until Brave quits or auto-lock triggers. The password is never stored – if you forget it, use *Reset* and re-enter your keys. Unlock only on extension pages (settings, toolbar popup), never on a web page.
+
+**No master password (optional).** If you prefer not to unlock at all, click *Use without a password* instead of setting one (or remove it later under *Remove password*). Keys then work immediately but are stored unencrypted in Brave's extension storage: anyone or any program that can read your Brave profile can read them. Set spending limits on your keys.
+
+- *Protects:* keys on disk – the Brave profile, backups / Time Machine, a copied folder or `config.json`, other programs reading those files.
+- *Doesn't protect:* keys while unlocked against malware already running on your Mac (it could read Brave's memory or log your password), or a weak password brute-forced from a stolen vault. No setup can make a key that the extension must use impossible to steal – that's what spending limits are for.
+- Keys never reach web pages: only the extension's service worker and pages read them and call the APIs; the in-page popup only gets the answer.
 
 ## Files
 
@@ -77,6 +89,8 @@ Where both are set, the settings page wins over `config.json` (keys merge per pr
 | `manifest.json` | Manifest V3: permissions, hotkeys |
 | `background.js` | Service worker: hotkeys, reading the selection, screenshot capture and crop, model fallback flow |
 | `llm.js` | Provider list, settings (+ migration, `config.json`), the fallback chain |
+| `vault.js` | Encrypted API key storage (master password, lock / unlock, auto-lock) |
+| `unlock.html` / `unlock.js` | Toolbar popup for unlocking while keys are locked |
 | `providers/core.js` | Shared prompt, answer schema, HTTP/error handling, answer parsing |
 | `providers/gemini.js` | Google Gemini adapter |
 | `providers/openai-compat.js` | OpenAI, OpenRouter and DeepSeek adapter (Chat Completions format) |
@@ -119,3 +133,4 @@ After editing code: click reload on the extension card in `brave://extensions`, 
 - **"Service worker registration failed. Status code: 3"**: remove the extension (not just reload) and load it again. If it persists, give Brave access to the Documents folder (System Settings → Privacy & Security → Files and Folders), or load the extension from a folder outside `~/Documents`. Details are in `brave://serviceworker-internals`.
 - **Hotkey does nothing**: check `brave://extensions/shortcuts`; another app or macOS may own the key.
 - **Logs**: `brave://extensions` → Ask AI → *Inspect views: service worker*. Each failed chain entry is logged there.
+- **🔒 on the toolbar icon**: API keys are locked – click the icon and enter your master password.

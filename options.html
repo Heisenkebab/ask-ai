@@ -31,6 +31,13 @@
     .chain-row.nokey select, .chain-row.nokey input { opacity: .5; }
     .nokey-note { grid-column: 3 / 7; font-size: 12px; color: var(--err); margin-top: -2px; }
 
+    .key-row label a + a { margin-top: 0; }
+    .pw-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+    .pw-row input { flex: 1 1 180px; }
+    .warning { font-size: 12px; color: var(--err); margin: 4px 0 8px 158px; }
+    .box-warning { font-size: 13px; color: var(--err); border: 1px solid var(--err); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
+    button.link { border: none; padding: 0; color: var(--accent); text-decoration: underline; font-size: 12px; }
+    details { margin-top: 10px; font-size: 13px; }
     .row { display: flex; gap: 8px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
     #status { white-space: pre-wrap; }
     @media (max-width: 560px) {
@@ -40,6 +47,7 @@
       .chain-row { grid-template-columns: 22px 1fr auto auto auto; }
       .chain-row input { grid-column: 2 / 6; grid-row: 2; }
       .nokey-note { grid-column: 2 / 6; }
+      .warning { margin-left: 0; }
     }
   </style>
 </head>
@@ -47,9 +55,9 @@
   <h1>Ask AI – Settings</h1>
 
   <h2>API keys</h2>
-  <div class="hint">One key per provider. You only need keys for the providers you use. Keys are stored only in this browser (or in <code>config.json</code>).</div>
-  <div id="keys"></div>
-  <p class="hint ok" id="fileNote" hidden></p>
+  <div class="hint">One key per provider; only needed for the providers you put in the chain. A master password is optional: with one, keys are stored encrypted.</div>
+  <div class="box-warning" id="fileWarning" hidden>⚠ <code>config.json</code> contains unencrypted API keys. Click <b>Download config.json</b> below (exports them encrypted) and replace the old file.</div>
+  <div id="vaultBox"></div>
 
   <h2>Model chain</h2>
   <div class="hint">Asked from top to bottom. If a model is busy, rate-limited, has no key or fails, the next one is asked.</div>

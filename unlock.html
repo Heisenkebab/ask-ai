@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Unlock Ask AI</title>
+  <style>
+    :root { color-scheme: light dark; --muted: #5f6368; --accent: #1a73e8; --err: #d93025; }
+    @media (prefers-color-scheme: dark) { :root { --muted: #9aa0a6; --accent: #8ab4f8; --err: #f28b82; } }
+    body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; width: 280px; margin: 0; padding: 14px 16px; }
+    h1 { font-size: 15px; margin: 0 0 4px; }
+    p { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+    input { width: 100%; box-sizing: border-box; padding: 7px 8px; font: inherit; border-radius: 6px; border: 1px solid #9aa0a6; }
+    button { margin-top: 8px; width: 100%; padding: 7px; font: inherit; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+    @media (prefers-color-scheme: dark) { button { color: #202124; } }
+    #error { color: var(--err); font-size: 12px; margin-top: 6px; min-height: 1em; }
+    a { color: var(--accent); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>🔒 API keys are locked</h1>
+  <p>Enter your master password to unlock them until Brave quits.</p>
+  <form id="form">
+    <input id="password" type="password" autocomplete="current-password" placeholder="Master password" autofocus>
+    <button type="submit">Unlock</button>
+  </form>
+  <div id="error"></div>
+  <a href="options.html" target="_blank">Open settings</a>
+  <script type="module" src="unlock.js"></script>
+</body>
+</html>

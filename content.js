@@ -135,7 +135,7 @@
     dragged = false;
     host = document.createElement("div");
     host.id = "ask-gemini-root";
-    const shadow = host.attachShadow({ mode: "open" });
+    const shadow = host.attachShadow({ mode: "closed" });
     const style = el("style");
     style.textContent = CSS;
     const card = el("div", "card");

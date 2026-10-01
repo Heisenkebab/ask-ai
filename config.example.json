@@ -1,11 +1,4 @@
 {
-  "keys": {
-    "gemini": "",
-    "openai": "",
-    "anthropic": "",
-    "openrouter": "",
-    "deepseek": ""
-  },
   "chain": [
     { "provider": "gemini", "model": "gemini-flash-latest" },
     { "provider": "anthropic", "model": "claude-haiku-4-5" },
