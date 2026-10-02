@@ -78,7 +78,7 @@ Notes:
 
 You can also right-click a selection → **Ask AI about selection**, or click the toolbar icon.
 
-In the popup, **Copy** copies the answer. **Esc** or a click outside closes it. Drag the popup to move it. Hover over it to see which provider/model answered.
+In the popup, **Copy** copies the answer. **Esc** or **✕** closes it; clicking elsewhere on the page leaves it open. The highlight on the selected text is removed as soon as you ask. Drag the popup to move it. Hover over it to see which provider/model answered.
 
 Change hotkeys at `brave://extensions/shortcuts`.
 

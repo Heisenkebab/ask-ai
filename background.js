@@ -52,7 +52,8 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.action === "openOptions") chrome.runtime.openOptionsPage();
 });
 
-// Runs in every frame of the page: returns the selected text and where it is.
+// Runs in every frame of the page: returns the selected text and where it is, then removes
+// the highlight.
 function readSelection() {
   const sel = window.getSelection();
   const text = sel ? sel.toString().trim() : "";
@@ -60,6 +61,7 @@ function readSelection() {
   if (text && sel.rangeCount) {
     const r = sel.getRangeAt(0).getBoundingClientRect();
     rect = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+    sel.removeAllRanges();
   }
   return { text, rect };
 }

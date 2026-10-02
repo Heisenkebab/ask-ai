@@ -63,16 +63,12 @@
     closedRequest = currentRequest;
     currentRequest = null;
     document.removeEventListener("keydown", onKey, true);
-    document.removeEventListener("mousedown", onOutside, true);
   }
 
-  // While hidden, Esc and outside clicks are ignored so the answer can be shown again.
+  // Only Esc and ✕ close the popup; clicking elsewhere on the page leaves it open.
+  // While hidden, Esc is ignored so the answer can be shown again.
   function onKey(e) {
     if (e.key === "Escape" && !host?.hidden) close();
-  }
-
-  function onOutside(e) {
-    if (host && !host.hidden && !e.composedPath().includes(host)) close();
   }
 
   // Called by the "toggle-popup" hotkey from background.js.
@@ -166,7 +162,6 @@
     position(card, rect);
     makeDraggable(card, card);
     document.addEventListener("keydown", onKey, true);
-    document.addEventListener("mousedown", onOutside, true);
 
     return { card, body, copyBtn };
   }
