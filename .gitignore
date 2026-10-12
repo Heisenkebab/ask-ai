@@ -1,1 +1,6 @@
 config.json
+
+# Your own plugins stay local; only the helper and the built-in plugin are tracked.
+plugins/*
+!plugins/_page.js
+!plugins/page-context.js

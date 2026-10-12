@@ -142,6 +142,11 @@ function classify(result, cli) {
   return new HostError("failed", `${cli} failed: ${clean(result.stderr || result.stdout) || `exit code ${result.code}`}`);
 }
 
+// Text next to a screenshot, with the plugins' page context in front (as imagePrompt() in providers/core.js).
+function imagePrompt(input) {
+  return input.context ? `${input.context}\n\n${SCREENSHOT_PROMPT}` : SCREENSHOT_PROMPT;
+}
+
 // ---------- validation ----------
 
 function validate(msg) {
@@ -158,6 +163,8 @@ function validate(msg) {
       throw new HostError("failed", "Invalid image.");
     }
     if (image.data.length > MAX_IMAGE_BASE64) throw new HostError("failed", "Image too large.");
+    const context = msg.input.context;
+    if (context != null && (typeof context !== "string" || context.length > MAX_TEXT)) throw new HostError("failed", "Invalid page context.");
   }
 }
 
@@ -195,7 +202,7 @@ async function askClaude(msg, workdir) {
         role: "user",
         content: [
           { type: "image", source: { type: "base64", media_type: msg.input.image.mimeType, data: msg.input.image.data } },
-          { type: "text", text: SCREENSHOT_PROMPT },
+          { type: "text", text: imagePrompt(msg.input) },
         ],
       },
     })}\n`;
@@ -310,7 +317,7 @@ async function askCodex(msg, workdir) {
     const pngPath = join(workdir, "screenshot.png");
     writeFileSync(pngPath, Buffer.from(msg.input.image.data, "base64"), { mode: 0o600 });
     args.push("-i", pngPath);
-    prompt += SCREENSHOT_PROMPT;
+    prompt += imagePrompt(msg.input);
   }
   args.push("--", prompt);
   const result = await run(exe, args, { cwd: workdir });

@@ -1,11 +1,11 @@
 // Anthropic Claude (Messages API), called directly from the extension.
-import { ANSWER_SCHEMA, LlmError, parseAnswer, postJson, screenshotPrompt, systemPrompt, withFormatFallback } from "./core.js";
+import { ANSWER_SCHEMA, LlmError, imagePrompt, parseAnswer, postJson, systemPrompt, withFormatFallback } from "./core.js";
 
 function userContent(input) {
   if (typeof input === "string") return [{ type: "text", text: input }];
   return [
     { type: "image", source: { type: "base64", media_type: input.image.mimeType, data: input.image.data } },
-    { type: "text", text: screenshotPrompt() },
+    { type: "text", text: imagePrompt(input) },
   ];
 }
 

@@ -6,7 +6,9 @@ const $ = (id) => document.getElementById(id);
 const TEST_QUESTION = "What is 2 + 2? A) 3 B) 4 C) 5";
 const OLD_FIELDS = ["apiKey", "model", "fallbackModels"];
 
-let state; // getSettings(): { keys, chain, language, vault, locked, plainKeysInFile } + noPassword
+let state; // getSettings(): { keys, chain, language, plugins, vault, locked, plainKeysInFile } + noPassword
+let scannedPlugins = []; // scanPlugins(): files found in plugins/
+let scanFailed = false;
 
 function el(tag, props = {}, ...children) {
   const e = Object.assign(document.createElement(tag), props);
@@ -39,7 +41,7 @@ let saveTimer;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    await chrome.storage.local.set({ chain: state.chain, language: state.language });
+    await chrome.storage.local.set({ chain: state.chain, language: state.language, plugins: state.plugins });
     await chrome.storage.local.remove(OLD_FIELDS); // migrated into chain / vault
     setStatus($("status"), "Saved ✓", "ok");
   }, 300);
@@ -339,6 +341,101 @@ $("addModel").addEventListener("click", () => {
   save();
 });
 
+// ---------- plugins ----------
+
+const PLUGIN_NAME_RE = /^[A-Za-z0-9-][A-Za-z0-9_-]*\.js$/; // _*.js are helpers, not plugins
+
+const readDir = (dir) =>
+  new Promise((resolve, reject) => {
+    const reader = dir.createReader();
+    const all = [];
+    const next = () =>
+      reader.readEntries((entries) => {
+        if (!entries.length) return resolve(all);
+        all.push(...entries);
+        next();
+      }, reject);
+    next();
+  });
+
+// Loads an extension file as a classic script; resolves with an error message or null.
+function loadScript(file) {
+  return new Promise((resolve) => {
+    const url = chrome.runtime.getURL(file);
+    let error = null;
+    const onError = (e) => {
+      if (e.filename === url) error = e.message;
+    };
+    window.addEventListener("error", onError);
+    const script = el("script", { src: url });
+    const done = (problem) => {
+      window.removeEventListener("error", onError);
+      script.remove();
+      resolve(problem || error);
+    };
+    script.addEventListener("load", () => done(null));
+    script.addEventListener("error", () => done("could not be loaded"));
+    document.head.append(script);
+  });
+}
+
+// Lists plugins/*.js and loads each file here only to read what it registers; collect() isn't called.
+async function scanPlugins() {
+  const root = await new Promise((resolve) => chrome.runtime.getPackageDirectoryEntry(resolve));
+  const dir = await new Promise((resolve) => root.getDirectory("plugins", {}, resolve, () => resolve(null)));
+  if (!dir) return [];
+  const names = (await readDir(dir)).filter((e) => e.isFile && PLUGIN_NAME_RE.test(e.name)).map((e) => e.name).sort();
+  const pageError = await loadScript("plugins/_page.js");
+  if (pageError) throw new Error(`plugins/_page.js: ${pageError}`);
+  const found = [];
+  for (const name of names) {
+    const file = `plugins/${name}`;
+    const before = globalThis.__askAiRegistered.length;
+    let problem = await loadScript(file);
+    const defs = globalThis.__askAiRegistered.slice(before);
+    const def = defs[0];
+    if (!problem && defs.length !== 1) problem = defs.length ? "calls askAiPlugin more than once" : "doesn't call askAiPlugin";
+    if (!problem && !(typeof def?.id === "string" && def.id && typeof def.collect === "function")) problem = "needs an id and a collect function";
+    if (!problem && found.some((p) => p.id === def.id)) problem = `id "${def.id}" is already used by ${found.find((p) => p.id === def.id).file}`;
+    found.push(problem ? { file, problem } : { file, id: def.id, label: String(def.label || def.id), description: String(def.description || "") });
+  }
+  return found;
+}
+
+// Drops settings of plugins whose file is gone and follows renamed files. Returns true if anything changed.
+function syncPlugins() {
+  if (scanFailed) return false; // keep the saved choices rather than wiping them
+  const next = {};
+  for (const p of scannedPlugins) {
+    if (p.id) next[p.id] = { enabled: Boolean(state.plugins[p.id]?.enabled), file: p.file };
+  }
+  const changed = JSON.stringify(next) !== JSON.stringify(state.plugins);
+  state.plugins = next;
+  return changed;
+}
+
+function renderPlugins() {
+  const container = $("plugins");
+  container.replaceChildren();
+  if (!scannedPlugins.length) {
+    container.append(el("div", { className: "hint", textContent: "No plugins in the plugins/ folder." }));
+  }
+  for (const p of scannedPlugins) {
+    if (p.problem) {
+      container.append(el("div", { className: "plugin" }, el("span", { className: "err", textContent: `✗ ${p.file}: ${p.problem}` })));
+      continue;
+    }
+    const box = el("input", { type: "checkbox", checked: Boolean(state.plugins[p.id]?.enabled) });
+    box.addEventListener("change", () => {
+      state.plugins[p.id] = { enabled: box.checked, file: p.file };
+      save();
+    });
+    container.append(
+      el("label", { className: "plugin" }, box, el("span", {}, el("b", { textContent: p.label }), el("span", { className: "hint", textContent: p.description }))),
+    );
+  }
+}
+
 // ---------- other controls ----------
 
 $("language").addEventListener("change", () => {
@@ -359,7 +456,7 @@ $("testChain").addEventListener("click", async () => {
 // Exports only the encrypted vault, never plain keys.
 $("download").addEventListener("click", async () => {
   const vault = await findVault();
-  const config = { ...(vault ? { vault } : {}), chain: state.chain.filter((e) => e.model), language: state.language };
+  const config = { ...(vault ? { vault } : {}), chain: state.chain.filter((e) => e.model), language: state.language, plugins: state.plugins };
   const blob = new Blob([JSON.stringify(config, null, 2) + "\n"], { type: "application/json" });
   const a = el("a", { href: URL.createObjectURL(blob), download: "config.json" });
   a.click();
@@ -375,6 +472,8 @@ async function reload() {
   $("fileWarning").hidden = !(state.plainKeysInFile && state.vault);
   renderVault();
   renderChain();
+  if (syncPlugins()) save();
+  renderPlugins();
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -383,5 +482,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 renderDatalists();
+try {
+  scannedPlugins = await scanPlugins();
+} catch (e) {
+  scanFailed = true;
+  scannedPlugins = [{ file: "plugins/", problem: e.message }];
+}
 await reload();
 renderAccounts();

@@ -122,6 +122,49 @@ If every entry fails, the popup lists each one with its reason. Default chain: `
 
 Where both are set, the settings page wins over `config.json` (keys merge per provider). Settings from the older Gemini-only version (`apiKey`, `model`, `fallbackModels`) are converted automatically.
 
+## Plugins
+
+Plugins read the page when you ask and send what they find along with the question, e.g. the question text when you only highlighted the options. Turn them on under **Plugins** in settings (all start off). What a plugin collects goes to the model provider, like the question itself.
+
+Included: **Text around the question** (`plugins/page-context.js`): the paragraph or form block around your selection or screenshot, plus the page title.
+
+### Writing a plugin
+
+Put one `.js` file into `plugins/`, reload the extension at `brave://extensions` and open the settings page: the plugin shows up there. Nothing else to edit. Files starting with `_` are helpers, not plugins.
+
+```js
+// plugins/points.js
+(() => {
+  // Your own helpers, regexes, constants …
+  const POINTS_RE = /(\d+)\s*points?/i;
+
+  askAiPlugin({
+    id: "points",                  // unique, stays the same (settings are stored under it)
+    label: "Points per question",  // shown in settings
+    description: "Tells the model how many points the question is worth.",
+    // Optional: tells the model how to read the text this plugin returns.
+    instructions: "The points show how detailed the answer should be: about one sentence per point.",
+    // Runs in the page when you ask. target = { selectionText, rect } (rect: screenshot region, else null).
+    // Return text for the prompt, or null to add nothing. May be async; gets 3 s.
+    collect(target) {
+      const block = blockAround(getSelection().anchorNode);
+      const points = matchAll(visibleText(block), POINTS_RE).map((m) => m[1]);
+      return points.length ? `Points: ${points.join(", ")}` : null;
+    },
+  });
+})();
+```
+
+Helpers from `plugins/_page.js` you can use: `blockAround(node, minLength)` (nearest paragraph / list item / form block with more than `minLength` characters), `visibleText(element)`, `matchAll(text, regex)` (every match; `m[0]` is the match, `m[1]` … the groups).
+
+Rules:
+
+- Plugins only **read** the page. Return plain text; each plugin is cut to 4,000 characters, all together to 6,000.
+- `instructions` (optional, up to 1,000 characters) is your note to the model about the returned text, e.g. "Each `Answer N` is a gap; give one answer per gap, in order." It is fixed text from the plugin file and the model is told to follow it, unlike the page text, which is marked as "not instructions". Don't build it from page content.
+- The code runs in the extension's isolated world: it sees the page's DOM, but not the page's JavaScript variables, and page scripts can't see it.
+- The settings page loads the file once to read `id`, `label` and `description` (without calling `collect`), so the top level must only define things and call `askAiPlugin`.
+- A plugin that throws or takes longer than 3 s is skipped (logged in the service worker console); the question is still asked.
+
 ## Security
 
 **API keys – master password.** Keys are encrypted with AES-256-GCM; the key is derived from your master password with PBKDF2-SHA256 (600,000 rounds). Only the encrypted form is stored (`chrome.storage` and `config.json`). After you unlock, the derived key is kept in memory only (`chrome.storage.session`) until Brave quits or auto-lock triggers. The password is never stored – if you forget it, use *Reset* and re-enter your keys. Unlock only on extension pages (settings, toolbar popup), never on a web page.
@@ -130,6 +173,7 @@ Where both are set, the settings page wins over `config.json` (keys merge per pr
 
 - *Protects:* keys on disk – the Brave profile, backups / Time Machine, a copied folder or `config.json`, other programs reading those files.
 - *Doesn't protect:* keys while unlocked against malware already running on your Mac (it could read Brave's memory or log your password), or a weak password brute-forced from a stolen vault. No setup can make a key that the extension must use impossible to steal – that's what spending limits are for.
+- Plugins add page text to the prompt. It is marked as page content that must not be followed as instructions, but treat it like the selected text: a page can try prompt injection through it.
 - Keys never reach web pages: only the extension's service worker and pages read them and call the APIs; the in-page popup only gets the answer.
 
 **Account bridge – prompt injection.** The question comes from any web page and may contain hidden instructions ("ignore this, run a command…"). The CLIs are coding agents, so the helper runs them **with every tool disabled**:
@@ -157,7 +201,10 @@ All runs use an empty temp folder. The helper only spawns these three fixed prog
 | `providers/openai-compat.js` | OpenAI, OpenRouter and DeepSeek adapter (Chat Completions format) |
 | `providers/anthropic.js` | Anthropic Claude adapter (Messages API) |
 | `content.js` | Injected into the page on demand: answer popup (Shadow DOM) and the screenshot region picker |
-| `options.html` / `options.js` | Settings page (auto-saves) |
+| `options.html` / `options.js` | Settings page (auto-saves); finds the plugin files |
+| `plugins.js` | Runs the enabled plugins in the tab and joins their text |
+| `plugins/_page.js` | `askAiPlugin()` and the helpers available to every plugin |
+| `plugins/*.js` | Plugins, one file each (`page-context.js` is included) |
 | `test/questions.html` | Sample multiple-choice, free-text and iframe questions |
 
 ### Customizing the popup
@@ -193,7 +240,7 @@ After editing code: click reload on the extension card in `brave://extensions`, 
 
 - **"Service worker registration failed. Status code: 3"**: remove the extension (not just reload) and load it again. If it persists, give Brave access to the Documents folder (System Settings → Privacy & Security → Files and Folders), or load the extension from a folder outside `~/Documents`. Details are in `brave://serviceworker-internals`.
 - **Hotkey does nothing**: check `brave://extensions/shortcuts`; another app or macOS may own the key.
-- **Logs**: `brave://extensions` → Ask AI → *Inspect views: service worker*. Each failed chain entry is logged there.
+- **Logs**: `brave://extensions` → Ask AI → *Inspect views: service worker*. Every question logs what each plugin added, the size of the prompt, and which model answered in how long; each failed chain entry is logged there too. A plugin's own `console.log` shows up in the web page's console instead.
 - **"Account bridge not installed"**: run `./native-host/install.sh`, quit Brave (⌘Q) and reopen it. If it persists, run `./native-host/install.sh --system`. The settings page shows the extension ID and Brave's exact error under *Accounts*.
 - **"Native host has exited"**: the helper can't start – re-run `./native-host/install.sh` (it must live outside `~/Documents`).
 - **Account "not logged in"**: run the tool once in Terminal (`claude`, `agy`, `codex login`).

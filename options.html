@@ -38,6 +38,9 @@
     .box-warning { font-size: 13px; color: var(--err); border: 1px solid var(--err); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
     button.link { border: none; padding: 0; color: var(--accent); text-decoration: underline; font-size: 12px; }
     details { margin-top: 10px; font-size: 13px; }
+    .plugin { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; }
+    .plugin input { margin-top: 4px; padding: 0; }
+    .plugin .hint { display: block; margin: 0; }
     .row { display: flex; gap: 8px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
     #status { white-space: pre-wrap; }
     @media (max-width: 560px) {
@@ -71,6 +74,10 @@
   <div class="row">
     <button id="addModel">+ Add model</button>
   </div>
+
+  <h2>Plugins</h2>
+  <div class="hint">Plugins read the page when you ask and send what they find with the question (to the model provider). To add one, put its <code>.js</code> file into the <code>plugins/</code> folder and reload the extension.</div>
+  <div id="plugins"></div>
 
   <h2>Answer language</h2>
   <select id="language">

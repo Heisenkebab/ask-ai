@@ -1,5 +1,5 @@
 // Google Gemini (generateContent REST API).
-import { LlmError, parseAnswer, postJson, screenshotPrompt, systemPrompt, withFormatFallback } from "./core.js";
+import { LlmError, imagePrompt, parseAnswer, postJson, systemPrompt, withFormatFallback } from "./core.js";
 
 // Gemini's OpenAPI-style schema (uppercase types).
 const RESPONSE_SCHEMA = {
@@ -24,7 +24,7 @@ function userParts(input) {
   if (typeof input === "string") return [{ text: input }];
   return [
     { inlineData: { mimeType: input.image.mimeType, data: input.image.data } },
-    { text: screenshotPrompt() },
+    { text: imagePrompt(input) },
   ];
 }
 

@@ -1,5 +1,5 @@
 // OpenAI-style Chat Completions: used for OpenAI, OpenRouter and DeepSeek.
-import { ANSWER_SCHEMA, LlmError, parseAnswer, postJson, screenshotPrompt, systemPrompt, withFormatFallback } from "./core.js";
+import { ANSWER_SCHEMA, LlmError, imagePrompt, parseAnswer, postJson, systemPrompt, withFormatFallback } from "./core.js";
 
 const CONFIGS = {
   openai: {
@@ -22,7 +22,7 @@ function userContent(input) {
   if (typeof input === "string") return input;
   return [
     { type: "image_url", image_url: { url: `data:${input.image.mimeType};base64,${input.image.data}` } },
-    { type: "text", text: screenshotPrompt() },
+    { type: "text", text: imagePrompt(input) },
   ];
 }
 

@@ -1,4 +1,6 @@
 import { PROVIDERS, askChain, getSettings, LlmError } from "./llm.js";
+import { questionWithContext } from "./providers/core.js";
+import { collectContext } from "./plugins.js";
 import { handleAlarm } from "./vault.js";
 
 const MENU_ID = "ask-ai-selection";
@@ -52,8 +54,7 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.action === "openOptions") chrome.runtime.openOptionsPage();
 });
 
-// Runs in every frame of the page: returns the selected text and where it is, then removes
-// the highlight.
+// Runs in every frame of the page: returns the selected text and where it is.
 function readSelection() {
   const sel = window.getSelection();
   const text = sel ? sel.toString().trim() : "";
@@ -61,7 +62,6 @@ function readSelection() {
   if (text && sel.rangeCount) {
     const r = sel.getRangeAt(0).getBoundingClientRect();
     rect = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
-    sel.removeAllRanges();
   }
   return { text, rect };
 }
@@ -96,7 +96,16 @@ async function handleAsk(tab, fallbackText = "") {
     popupSender(tabId, selection.rect)({ state: "error", message: "Select some text first, then press the hotkey." });
     return;
   }
-  await runQuery(tabId, selection.rect, selection.text.slice(0, MAX_CHARS));
+  const send = popupSender(tabId, selection.rect);
+  send({ state: "loading" });
+  await runQuery(send, async (settings) => {
+    // Plugins read the page while the selection is still there; then the highlight is removed.
+    const context = await collectContext(tabId, { selectionText: selection.text, rect: null }, settings.plugins);
+    chrome.scripting
+      .executeScript({ target: { tabId, allFrames: true }, func: () => window.getSelection()?.removeAllRanges() })
+      .catch(() => {});
+    return questionWithContext(selection.text.slice(0, MAX_CHARS - context.length - 20), context);
+  });
 }
 
 function popupSender(tabId, rect) {
@@ -105,15 +114,19 @@ function popupSender(tabId, rect) {
     chrome.tabs.sendMessage(tabId, { requestId, rect, ...payload }, { frameId: 0 }).catch(() => {});
 }
 
-// Shows the loading popup, runs the model chain and shows the answer (or error) at rect.
-async function runQuery(tabId, rect, input) {
-  const send = popupSender(tabId, rect);
-  send({ state: "loading" });
+// prepare(settings) builds the input (question text or { image, context? }); then the model chain
+// runs and the answer (or error) is shown in the popup.
+async function runQuery(send, prepare) {
   try {
     const settings = await getSettings();
+    const input = await prepare(settings);
+    // Service worker console (brave://extensions → Inspect views). Never log keys here.
+    const started = Date.now();
+    console.log(`[Ask AI] asking: ${typeof input === "string" ? `${input.length} characters` : `screenshot${input.context ? ` + ${input.context.length} characters of page context` : ""}`}`);
     const data = await askChain(input, settings, (next) =>
       send({ state: "loading", message: `Trying ${next}…` }),
     );
+    console.log(`[Ask AI] answered by ${data.model} in ${((Date.now() - started) / 1000).toFixed(1)}s`, data);
     send({ state: "answer", data });
   } catch (e) {
     send({
@@ -143,15 +156,20 @@ async function handleScreenshot(tab) {
   }
   if (!region) return; // cancelled with Esc or a click without dragging
 
-  let image;
-  try {
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
-    image = await cropToBase64(dataUrl, region);
-  } catch (e) {
-    popupSender(tabId, region.rect)({ state: "error", message: `Screenshot failed: ${e.message}` });
-    return;
-  }
-  await runQuery(tabId, region.rect, { image });
+  const send = popupSender(tabId, region.rect);
+  await runQuery(send, async (settings) => {
+    // Before the capture and the loading popup, so neither shows up in the screenshot.
+    const context = await collectContext(tabId, { selectionText: "", rect: region.rect }, settings.plugins);
+    let image;
+    try {
+      const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+      image = await cropToBase64(dataUrl, region);
+    } catch (e) {
+      throw new LlmError(`Screenshot failed: ${e.message}`);
+    }
+    send({ state: "loading" });
+    return context ? { image, context } : { image };
+  });
 }
 
 async function cropToBase64(dataUrl, { rect, viewportWidth }) {

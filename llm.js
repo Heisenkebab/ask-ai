@@ -5,6 +5,7 @@ import * as anthropic from "./providers/anthropic.js";
 import { adapter } from "./providers/openai-compat.js";
 import { adapter as accountAdapter } from "./providers/account.js";
 import { VaultError, getFileSettings, readVaultKeys, touchAutoLock } from "./vault.js";
+import { PLUGIN_FILE_RE } from "./plugins.js";
 
 export { LlmError, getFileSettings };
 
@@ -79,6 +80,7 @@ export const DEFAULT_SETTINGS = {
     { provider: "gemini", model: "gemini-flash-lite-latest" },
   ],
   language: "auto",
+  plugins: {}, // { [id]: { enabled, file } }, filled by the settings page from the files in plugins/
 };
 
 const filled = (v) => typeof v === "string" && v.trim() !== "";
@@ -103,6 +105,13 @@ export function normalizeSettings(src = {}) {
   }
 
   if (filled(src.language)) out.language = src.language.trim();
+
+  if (src.plugins && typeof src.plugins === "object") {
+    out.plugins = {};
+    for (const [id, p] of Object.entries(src.plugins)) {
+      if (p && typeof p.enabled === "boolean" && PLUGIN_FILE_RE.test(p.file)) out.plugins[id] = { enabled: p.enabled, file: p.file };
+    }
+  }
   return out;
 }
 
@@ -117,6 +126,7 @@ export async function getSettings() {
     Object.assign(settings.keys, n.keys);
     if (n.chain) settings.chain = n.chain;
     if (n.language) settings.language = n.language;
+    if (n.plugins) settings.plugins = n.plugins;
   }
   settings.plainKeysInFile = Object.keys(normalizeSettings(file).keys).length > 0;
   try {

@@ -25,7 +25,9 @@ Guidance for AI coding agents working on this repo. User-facing docs are in `REA
 | `providers/gemini.js`, `openai-compat.js`, `anthropic.js` | API adapters. `openai-compat.js` serves OpenAI, OpenRouter and DeepSeek |
 | `providers/account.js` | Account adapters: `chrome.runtime.sendNativeMessage("com.askai.bridge", …)` |
 | `vault.js` | Master-password encryption of API keys (PBKDF2-SHA256 600k → AES-256-GCM), lock/unlock, auto-lock |
-| `options.html/js` | Settings page: accounts status, vault, model chain. Auto-saves |
+| `options.html/js` | Settings page: accounts status, vault, model chain, plugins (scans `plugins/` with `chrome.runtime.getPackageDirectoryEntry`). Auto-saves |
+| `plugins.js` | `collectContext()`: injects `plugins/_page.js` + each enabled plugin file into the top frame and calls its `collect` |
+| `plugins/` | `_page.js` (`askAiPlugin()`, `blockAround`, `visibleText`, `matchAll`) and one file per plugin; `_*` files are not plugins |
 | `unlock.html/js` | Toolbar popup shown while keys are locked |
 | `native-host/` | `ask-ai-host.mjs` (helper), `install.sh` / `uninstall.sh`, `extension-id.mjs` |
 | `test/questions.html` | Manual test page |
@@ -33,9 +35,9 @@ Guidance for AI coding agents working on this repo. User-facing docs are in `REA
 ## How a question flows
 
 1. Hotkey / context menu / toolbar → `background.js` (`handleAsk` or `handleScreenshot`).
-2. Selection text via `chrome.scripting.executeScript` (all frames); screenshot via `captureVisibleTab` + `cropToBase64`.
+2. Selection text via `chrome.scripting.executeScript` (all frames); screenshot via `captureVisibleTab` + `cropToBase64`. Enabled plugins run first (`collectContext`, while the selection still exists and before the capture); then the highlight is removed. Their text becomes a "Page context" block: in front of the question string (`questionWithContext`), or `{ image, context }` for screenshots (`imagePrompt`).
 3. `content.js` is injected into the top frame; background sends `{requestId, state: "loading" | "answer" | "error", rect, …}` messages.
-4. `askChain(input, settings, onRetry)` walks `settings.chain`; `input` is a string or `{ image: { mimeType, data } }`. Every adapter is `ask({ input, model, apiKey, language })` → `{ type, correct_options, answer }`.
+4. `askChain(input, settings, onRetry)` walks `settings.chain`; `input` is a string or `{ image: { mimeType, data }, context? }`. Every adapter is `ask({ input, model, apiKey, language })` → `{ type, correct_options, answer }`.
 5. **Any** adapter failure moves on to the next chain entry; if all fail, one `LlmError` lists every reason. `needsSettings` makes the popup show "Open settings".
 
 To add an API provider: add an entry to `PROVIDERS` in `llm.js`, an adapter (or a config in `openai-compat.js`), and its host to `host_permissions`.
@@ -47,6 +49,7 @@ To add an API provider: add an entry to `PROVIDERS` in `llm.js`, an adapter (or 
 - **The helper** only spawns `claude` / `agy` / `codex` via `spawn(exe, argsArray)` (never a shell string), validates CLI name, model (`^[A-Za-z0-9._:/-]{1,80}$`), text length, PNG-only images, runs in a fresh temp dir and deletes it. Keep it small.
 - **API keys never reach a web page.** Only the service worker and extension pages read keys; content scripts receive answers only. With a master password, keys are stored only inside the encrypted `vault`; the derived key lives in `chrome.storage.session`. The password is optional (user's choice, the settings page warns): without one, keys sit plaintext in `chrome.storage.local` (`keys`), and `vault: false` there marks "no password chosen" (the default is still to ask for one) so a `config.json` vault doesn't come back. Never write plaintext keys to storage while a vault exists, and never export them in `config.json`.
 - **The master password is typed only on extension pages** (`options.html`, `unlock.html`), never into the in-page popup (the page could capture keystrokes).
+- **Plugins** only read the page and return text; never run them with `world: "MAIN"`. Their output is page content: keep it capped (4,000 per plugin, 6,000 total, question ≤ 20,000 overall, the helper's limit) and inside the marked "Page context" block. A plugin's optional `instructions` string (static, from the plugin file, ≤ 1,000 chars) is the only plugin text placed outside that block as a trusted "How to read it" note; never fill it from page content. Plugin files must match `^plugins/[A-Za-z0-9-][A-Za-z0-9_-]*\.js$` before they are injected. No new permissions for plugins.
 - **Popup:** keep the Shadow DOM `closed`, and render model output with `textContent`, never `innerHTML`.
 - No `externally_connectable`, no `web_accessible_resources`, no broad host permissions (`activeTab` + `scripting` only).
 
