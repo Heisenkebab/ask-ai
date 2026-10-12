@@ -2,6 +2,8 @@
 
 A Brave/Chrome extension: highlight a question on a web page (or draw a box around it), press a hotkey, and an AI's answer appears in a small transparent popup next to it.
 
+> **Disclaimer:** this extension is completely vibe coded (written by AI). It is provided as is, without any warranty. I take no responsibility for anything that happens when you use it, including wrong answers, leaked or misused API keys, costs, account bans, or other damage. Use it at your own risk.
+
 Use **your Claude, Google or ChatGPT account** (no API key), or API keys for **Google Gemini, OpenAI, Anthropic (Claude), OpenRouter, DeepSeek**.
 
 - **Multiple choice** → shows only the correct option(s), e.g. `B  Mars`
@@ -245,3 +247,7 @@ After editing code: click reload on the extension card in `brave://extensions`, 
 - **"Native host has exited"**: the helper can't start – re-run `./native-host/install.sh` (it must live outside `~/Documents`).
 - **Account "not logged in"**: run the tool once in Terminal (`claude`, `agy`, `codex login`).
 - **🔒 on the toolbar icon**: API keys are locked – click the icon and enter your master password.
+
+## License
+
+[MIT](LICENSE). Provided as is, without warranty.
